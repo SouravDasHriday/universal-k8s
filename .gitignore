@@ -1,0 +1,21 @@
+# OS & Editor files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+.idea/
+.vscode/
+
+# Cluster Secrets & Tokens
+join-worker.sh
+join-controlplane.sh
+admin.conf
+*.key
+*.pem
+*.crt
+kubeconfig*
+
+# Logs & Temporary Files
+*.log
+/tmp/
