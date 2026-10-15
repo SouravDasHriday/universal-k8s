@@ -133,10 +133,9 @@ fi
 export KUBECONFIG=/etc/kubernetes/admin.conf
 
 # 6. Extract Join Commands
-WORKER_JOIN_CMD="$(grep -A 2 'kubeadm join' "$INIT_OUTPUT_FILE" | grep -v 'control-plane' | head -1 | sed 's/^[ \t]*//' || true)"
-if [ -z "$WORKER_JOIN_CMD" ]; then
-  WORKER_JOIN_CMD="$(kubeadm token create --print-join-command)"
-fi
+# Using the native kubeadm token command guarantees a clean, single-line output
+echo "[4/4] Generating permanent join scripts..."
+WORKER_JOIN_CMD="$(kubeadm token create --print-join-command)"
 
 cat <<EOF > "$PARENT_DIR/join-worker.sh"
 #!/bin/bash
@@ -179,7 +178,7 @@ echo "=========================================================="
 echo ""
 echo "To join worker nodes from ANY region or cloud, run:"
 echo "----------------------------------------------------------"
-echo "sudo $(cat "$PARENT_DIR/join-worker.sh" | grep -v '^#' | grep 'kubeadm join')"
+cat "$PARENT_DIR/join-worker.sh" | grep -v '^#' | grep 'kubeadm join' | sed 's/^/sudo /'
 echo "----------------------------------------------------------"
 echo ""
 echo "Join script saved locally to: $PARENT_DIR/join-worker.sh"
