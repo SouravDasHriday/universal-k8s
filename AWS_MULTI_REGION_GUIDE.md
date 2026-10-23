@@ -198,8 +198,11 @@ If you receive replies, your **cross-region CNI with MTU 1440 is fully functiona
 ### 3. Verify Metrics Server (Resource Utilization)
 ```bash
 kubectl top nodes
+kubectl top pods -A
 ```
 Shows CPU and Memory usage across all AWS regions.
+
+> **Note:** The metrics-server is deployed with `hostNetwork: true` and `--secure-port=4443` to work reliably across multi-region kubeadm clusters. Metrics data may take 60-90 seconds to appear after initial deployment.
 
 ### 4. Verify Dynamic StorageClass
 ```bash

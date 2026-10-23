@@ -26,7 +26,7 @@ Native multi-architecture support for **x86_64** (Intel/AMD) and **aarch64** (AR
 * **Production Container Runtime**:
   * Containerd v2 / v1.7 with full upstream configuration and `SystemdCgroup = true`.
 * **Out-of-the-Box Production Add-ons**:
-  * **Metrics Server**: Pre-configured with `--kubelet-insecure-tls` for `kubectl top nodes/pods` and Horizontal Pod Autoscaling (HPA).
+  * **Metrics Server**: Production-hardened with `hostNetwork: true`, `--secure-port=4443`, `--kubelet-insecure-tls`, and patched `containerPort: 4443` — ensures `kubectl top nodes/pods` and Horizontal Pod Autoscaling (HPA) work out-of-the-box on kubeadm, bare-metal, and cloud clusters.
   * **Dynamic Local-Path StorageClass**: Ready-to-use default StorageClass for persistent volume claims (`PVC`) for stateful workloads (databases, storage).
 * **High Availability (HA) Ready**:
   * Supports single-master control planes and multi-master HA via Keepalived/HAProxy or Cloud Load Balancers (AWS NLB, Azure LB).
@@ -48,7 +48,7 @@ universal-k8s/
     ├── 03-init-controlplane.sh   # Declarative kubeadm init with kubeadm-config.yaml
     ├── 04-join-node.sh           # Universal node joiner (Control plane & Worker nodes)
     ├── 05-install-cni.sh         # Multi-region Calico/Cilium installer with MTU tuning (1440)
-    └── 06-install-addons.sh      # Installs Metrics Server and Local-Path StorageClass
+    └── 06-install-addons.sh      # Installs Metrics Server (hostNetwork + port 4443) and Local-Path StorageClass
 ```
 
 ---
@@ -156,6 +156,7 @@ kubectl get pods -A
 kubectl top nodes
 kubectl top pods -A
 ```
+> **Note:** Metrics data may take 60-90 seconds to appear after initial deployment. If `kubectl top` returns `error: metrics not available yet`, wait and retry.
 
 ### Test Dynamic Storage Provisioning
 ```bash
@@ -168,6 +169,30 @@ kubectl get storageclass
 ## 🌐 AWS Multi-Region Deployment Guide
 
 For full architectural blueprints, AWS Route Table configurations, Security Group rules, and cross-region pod ping tests, see [AWS_MULTI_REGION_GUIDE.md](AWS_MULTI_REGION_GUIDE.md).
+
+---
+
+## 🛠️ Troubleshooting
+
+### Metrics Server Not Reporting Data
+If `kubectl top nodes` shows `error: metrics not available yet` after 2+ minutes:
+```bash
+# Check metrics-server pod status
+kubectl -n kube-system get pods -l k8s-app=metrics-server
+
+# Check metrics-server logs
+kubectl -n kube-system logs -l k8s-app=metrics-server --tail=50
+
+# Verify the metrics API is registered
+kubectl get apiservices | grep metrics
+```
+The `06-install-addons.sh` script automatically patches the upstream manifest with:
+| Patch | Purpose |
+|---|---|
+| `hostNetwork: true` | Allows API server to route directly to the metrics-server pod |
+| `--kubelet-insecure-tls` | Accepts kubeadm self-signed kubelet certificates |
+| `--secure-port=4443` | Avoids port 10250 conflict with the kubelet |
+| `containerPort: 4443` | Ensures the Service endpoints match the listening port |
 
 ---
 
